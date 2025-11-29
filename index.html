@@ -1,0 +1,802 @@
+<!doctype html>
+<html lang="zh-TW">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>班級抽籤程式</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <style>
+    body {
+      box-sizing: border-box;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+    }
+
+    body {
+      font-family: 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 5%;
+    }
+
+    .title {
+      font-size: 3em;
+      color: #ffffff;
+      margin-bottom: 3%;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      font-weight: bold;
+    }
+
+    .display-area {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 30px;
+      padding: 10%;
+      min-width: 70%;
+      min-height: 55%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      margin-bottom: 4%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .number-display {
+      font-size: 10em;
+      font-weight: bold;
+      color: #667eea;
+      text-shadow: 3px 3px 6px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
+    }
+
+    .number-display.rolling {
+      animation: roll 0.1s infinite;
+    }
+
+    @keyframes roll {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-10px) scale(1.1); }
+    }
+
+    .subtitle {
+      font-size: 1.8em;
+      color: #666;
+      margin-top: 3%;
+    }
+
+    .subtitle.congrats {
+      font-size: 2.5em;
+      color: #ff0000;
+      font-weight: bold;
+      animation: congrats-bounce 0.8s ease-out;
+    }
+
+    @keyframes congrats-bounce {
+      0%, 100% { transform: translateY(0); }
+      25% { transform: translateY(-15px); }
+      50% { transform: translateY(0); }
+      75% { transform: translateY(-8px); }
+    }
+
+    .draw-button {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      padding: 20px 45px;
+      font-size: 1.8em;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 10px 30px rgba(245, 87, 108, 0.4);
+      transition: all 0.3s ease;
+      font-family: 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+      white-space: nowrap;
+    }
+
+    .draw-button:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 40px rgba(245, 87, 108, 0.6);
+    }
+
+    .draw-button:active {
+      transform: translateY(-2px);
+    }
+
+    .draw-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .confetti {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: #f093fb;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @keyframes confetti-fall {
+      0% {
+        opacity: 1;
+        transform: translateY(0) rotate(0deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(800px) rotate(720deg);
+      }
+    }
+
+    .firework {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    @keyframes firework-explode {
+      0% {
+        opacity: 1;
+        transform: translate(0, 0) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(var(--tx), var(--ty)) scale(0);
+      }
+    }
+
+    .number-display.winner {
+      animation: winner-pulse 0.6s ease-out forwards;
+      color: #ff0000 !important;
+      text-shadow: 0 0 20px rgba(255, 0, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.6) !important;
+    }
+
+    @keyframes winner-pulse {
+      0% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(2.2);
+      }
+      100% {
+        transform: scale(2);
+      }
+    }
+
+    .settings-panel {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 20px;
+      padding: 3% 5%;
+      margin-bottom: 3%;
+      display: flex;
+      flex-direction: row;
+      gap: 4%;
+      align-items: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      max-width: 85%;
+      justify-content: space-between;
+    }
+
+    .settings-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2.5%;
+      flex: 1;
+    }
+
+    .settings-row {
+      display: flex;
+      gap: 5%;
+      align-items: center;
+      justify-content: flex-start;
+      width: 100%;
+    }
+
+    .settings-group {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .settings-panel label {
+      font-size: 1.3em;
+      color: #333;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .settings-panel input {
+      width: 90px;
+      padding: 10px 15px;
+      font-size: 1.3em;
+      border: 2px solid #667eea;
+      border-radius: 10px;
+      text-align: center;
+      font-family: 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+      transition: all 0.3s ease;
+    }
+
+    .settings-panel input:focus {
+      outline: none;
+      border-color: #f5576c;
+      box-shadow: 0 0 10px rgba(245, 87, 108, 0.3);
+    }
+
+    #absentNumbers {
+      width: 180px;
+    }
+
+    #absentNumbers.has-value {
+      background: #333333;
+      color: #ffffff;
+      border-color: #333333;
+    }
+
+    .drawn-numbers {
+      background: rgba(173, 216, 230, 0.9);
+      border-radius: 20px;
+      padding: 2% 3%;
+      font-size: 1.3em;
+      color: #555;
+      text-align: left;
+      flex: 1;
+      min-height: 60px;
+      line-height: 1.8;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .drawn-numbers strong {
+      color: #333;
+      margin-right: 10px;
+      font-size: 1.1em;
+    }
+
+    .reset-button {
+      background: linear-gradient(135deg, #888 0%, #666 100%);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      padding: 12px 40px;
+      font-size: 1.4em;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      transition: all 0.3s ease;
+      font-family: 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+      white-space: nowrap;
+    }
+
+    .reset-button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+    }
+
+    .reset-button:active {
+      transform: translateY(-1px);
+    }
+
+    @media (max-width: 768px) {
+      .title {
+        font-size: 2em;
+      }
+      
+      .number-display {
+        font-size: 6em;
+      }
+      
+      .subtitle {
+        font-size: 1.2em;
+      }
+      
+      .draw-button {
+        font-size: 1.3em;
+        padding: 15px 30px;
+      }
+      
+      .settings-panel {
+        flex-direction: column;
+        gap: 3%;
+        max-width: 90%;
+      }
+      
+      .settings-panel input {
+        width: 80px;
+        font-size: 1.2em;
+      }
+
+      #absentNumbers {
+        width: 150px;
+      }
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+ </head>
+ <body>
+  <main class="container">
+   <h1 class="title" id="mainTitle">🎲 班級抽籤程式</h1>
+   <div class="settings-panel">
+    <div class="settings-left">
+     <div class="settings-row">
+      <div class="settings-group"><label for="minNumber">最小號碼</label> <input type="number" id="minNumber" value="1" min="1" max="99">
+      </div>
+      <div class="settings-group"><label for="maxNumber">最大號碼</label> <input type="number" id="maxNumber" value="30" min="1" max="99">
+      </div>
+     </div>
+     <div class="settings-row">
+      <div class="settings-group"><label for="absentNumbers">請假號碼</label> <input type="text" id="absentNumbers" placeholder="例：5,12,18">
+      </div>
+     </div>
+    </div><button class="draw-button" id="drawButton">���始抽籤</button>
+   </div>
+   <div class="display-area" id="displayArea">
+    <div class="number-display" id="numberDisplay">
+     ?
+    </div>
+    <div class="subtitle">
+     準備抽籤
+    </div>
+   </div>
+   <div style="display: flex; gap: 3%; align-items: center; justify-content: center; width: 85%; margin-top: 2%;"><button class="reset-button" id="resetButton">重置抽籤</button>
+    <div class="drawn-numbers" id="drawnNumbers"></div>
+   </div>
+  </main>
+  <script>
+    const defaultConfig = {
+      main_title: '🎲 班級抽籤程式',
+      button_text: '開始抽籤',
+      background_color: '#667eea',
+      surface_color: '#ffffff',
+      text_color: '#333333',
+      primary_action_color: '#f5576c',
+      secondary_action_color: '#764ba2',
+      font_family: 'Microsoft JhengHei',
+      font_size: 16
+    };
+
+    let isDrawing = false;
+    let drawnNumbers = [];
+
+    function updateUI() {
+      const config = window.elementSdk?.config || defaultConfig;
+      const customFont = config.font_family || defaultConfig.font_family;
+      const baseFontStack = 'PingFang TC, sans-serif';
+      const baseSize = config.font_size || defaultConfig.font_size;
+      const bgColor = config.background_color || defaultConfig.background_color;
+      const surfaceColor = config.surface_color || defaultConfig.surface_color;
+      const textColor = config.text_color || defaultConfig.text_color;
+      const primaryColor = config.primary_action_color || defaultConfig.primary_action_color;
+      const secondaryColor = config.secondary_action_color || defaultConfig.secondary_action_color;
+
+      document.body.style.background = `linear-gradient(135deg, ${bgColor} 0%, ${secondaryColor} 100%)`;
+      document.body.style.fontFamily = `${customFont}, ${baseFontStack}`;
+
+      const title = document.getElementById('mainTitle');
+      title.textContent = config.main_title || defaultConfig.main_title;
+      title.style.fontSize = `${baseSize * 3}px`;
+      title.style.fontFamily = `${customFont}, ${baseFontStack}`;
+      title.style.color = surfaceColor;
+
+      const displayArea = document.getElementById('displayArea');
+      displayArea.style.background = `rgba(${hexToRgb(surfaceColor)}, 0.95)`;
+
+      const numberDisplay = document.getElementById('numberDisplay');
+      numberDisplay.style.fontSize = `${baseSize * 10}px`;
+      numberDisplay.style.fontFamily = `${customFont}, ${baseFontStack}`;
+      numberDisplay.style.color = bgColor;
+
+      const subtitle = document.querySelector('.subtitle');
+      if (!subtitle.classList.contains('congrats')) {
+        subtitle.style.fontSize = `${baseSize * 1.8}px`;
+        subtitle.style.color = textColor;
+      } else {
+        subtitle.style.fontSize = `${baseSize * 2.5}px`;
+      }
+      subtitle.style.fontFamily = `${customFont}, ${baseFontStack}`;
+
+      const button = document.getElementById('drawButton');
+      button.textContent = config.button_text || defaultConfig.button_text;
+      button.style.fontSize = `${baseSize * 2}px`;
+      button.style.fontFamily = `${customFont}, ${baseFontStack}`;
+      button.style.background = `linear-gradient(135deg, #f093fb 0%, ${primaryColor} 100%)`;
+
+      const resetButton = document.getElementById('resetButton');
+      resetButton.style.fontSize = `${baseSize * 1.5}px`;
+      resetButton.style.fontFamily = `${customFont}, ${baseFontStack}`;
+
+      const drawnNumbersDiv = document.getElementById('drawnNumbers');
+      drawnNumbersDiv.style.fontSize = `${baseSize * 1.3}px`;
+      drawnNumbersDiv.style.fontFamily = `${customFont}, ${baseFontStack}`;
+
+      const labels = document.querySelectorAll('.settings-panel label');
+      labels.forEach(label => {
+        label.style.fontSize = `${baseSize * 1.5}px`;
+        label.style.fontFamily = `${customFont}, ${baseFontStack}`;
+        label.style.color = textColor;
+      });
+
+      const inputs = document.querySelectorAll('.settings-panel input');
+      inputs.forEach(input => {
+        input.style.fontSize = `${baseSize * 1.5}px`;
+        input.style.fontFamily = `${customFont}, ${baseFontStack}`;
+        input.style.borderColor = bgColor;
+      });
+    }
+
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}` : '255, 255, 255';
+    }
+
+    // 建立�����系統
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playRollingSound() {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = 200 + Math.random() * 400;
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.1);
+    }
+    
+    function playWinnerSound() {
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+      notes.forEach((freq, index) => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = freq;
+        oscillator.type = 'sine';
+        
+        const startTime = audioContext.currentTime + index * 0.15;
+        gainNode.gain.setValueAtTime(0.2, startTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
+        
+        oscillator.start(startTime);
+        oscillator.stop(startTime + 0.3);
+      });
+    }
+    
+    function playClickSound() {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = 800;
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.05);
+    }
+
+    function createConfetti() {
+      const displayArea = document.getElementById('displayArea');
+      const colors = ['#f093fb', '#f5576c', '#667eea', '#764ba2', '#ffd700'];
+      
+      for (let i = 0; i < 30; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = Math.random() * 100 + '%';
+        confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.animationDelay = Math.random() * 0.3 + 's';
+        confetti.style.animation = 'confetti-fall 2s ease-out forwards';
+        displayArea.appendChild(confetti);
+        
+        setTimeout(() => confetti.remove(), 2000);
+      }
+    }
+
+    function createFirework(x, y, isBig = false) {
+      const displayArea = document.getElementById('displayArea');
+      const colors = ['#ff0000', '#ff6600', '#ffff00', '#00ff00', '#0099ff', '#ff00ff', '#ffd700'];
+      const particles = isBig ? 60 : 30;
+      
+      for (let i = 0; i < particles; i++) {
+        const firework = document.createElement('div');
+        firework.className = 'firework';
+        
+        const angle = (Math.PI * 2 * i) / particles;
+        const velocity = isBig ? (200 + Math.random() * 150) : (100 + Math.random() * 100);
+        const tx = Math.cos(angle) * velocity;
+        const ty = Math.sin(angle) * velocity;
+        
+        firework.style.left = x + '%';
+        firework.style.top = y + '%';
+        firework.style.background = colors[Math.floor(Math.random() * colors.length)];
+        firework.style.width = isBig ? '8px' : '4px';
+        firework.style.height = isBig ? '8px' : '4px';
+        firework.style.setProperty('--tx', tx + 'px');
+        firework.style.setProperty('--ty', ty + 'px');
+        firework.style.animation = `firework-explode ${isBig ? 1.5 : 0.8 + Math.random() * 0.4}s ease-out forwards`;
+        
+        displayArea.appendChild(firework);
+        
+        setTimeout(() => firework.remove(), isBig ? 2000 : 1500);
+      }
+    }
+
+    function createMultipleFireworks() {
+      const positions = [
+        { x: 20, y: 30, big: false },
+        { x: 80, y: 30, big: false },
+        { x: 50, y: 50, big: true },
+        { x: 30, y: 60, big: false },
+        { x: 70, y: 60, big: false },
+        { x: 15, y: 50, big: true },
+        { x: 85, y: 50, big: true }
+      ];
+      
+      positions.forEach((pos, index) => {
+        setTimeout(() => {
+          createFirework(pos.x, pos.y, pos.big);
+        }, index * 180);
+      });
+    }
+
+    function getAbsentNumbers() {
+      const absentInput = document.getElementById('absentNumbers').value.trim();
+      if (!absentInput) return [];
+      
+      const numbers = absentInput.split(',')
+        .map(n => parseInt(n.trim()))
+        .filter(n => !isNaN(n));
+      
+      return [...new Set(numbers)];
+    }
+
+    function updateDrawnNumbersDisplay() {
+      const drawnNumbersDiv = document.getElementById('drawnNumbers');
+      if (drawnNumbers.length > 0) {
+        const sortedNumbers = [...drawnNumbers].sort((a, b) => a - b);
+        drawnNumbersDiv.innerHTML = `<strong>已抽出號碼：</strong><span>${sortedNumbers.join(', ')}</span>`;
+      } else {
+        drawnNumbersDiv.innerHTML = '<strong>已抽出號碼：</strong><span>尚無</span>';
+      }
+    }
+
+    function showMessage(text, color) {
+      const message = document.createElement('div');
+      message.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); z-index: 1000; text-align: center; font-size: 1.5em;';
+      message.innerHTML = `<p style="color: ${color}; font-weight: bold;">${text}</p><button onclick="this.parentElement.remove()" style="margin-top: 20px; padding: 10px 30px; background: #667eea; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 1em;">確定</button>`;
+      document.body.appendChild(message);
+    }
+
+    async function drawNumber() {
+      if (isDrawing) return;
+      
+      const minNum = parseInt(document.getElementById('minNumber').value);
+      const maxNum = parseInt(document.getElementById('maxNumber').value);
+      const absentNumbers = getAbsentNumbers();
+      
+      if (minNum > maxNum) {
+        showMessage('最小號碼不能大於最大號碼���', '#ff0000');
+        return;
+      }
+      
+      const totalNumbers = maxNum - minNum + 1;
+      const availableNumbers = totalNumbers - absentNumbers.filter(n => n >= minNum && n <= maxNum).length;
+      
+      if (drawnNumbers.length >= availableNumbers) {
+        showMessage('所有號碼都已抽完！<br>請點擊「重置抽籤」重新開始。', '#ff6600');
+        return;
+      }
+      
+      isDrawing = true;
+      const button = document.getElementById('drawButton');
+      const numberDisplay = document.getElementById('numberDisplay');
+      const subtitle = document.querySelector('.subtitle');
+      
+      button.disabled = true;
+      numberDisplay.classList.add('rolling');
+      numberDisplay.classList.remove('winner');
+      subtitle.textContent = '抽籤中...';
+      
+      let rollingCount = 0;
+      const rollingInterval = setInterval(() => {
+        let randomNum;
+        let attempts = 0;
+        do {
+          randomNum = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
+          attempts++;
+          if (attempts > 1000) {
+            clearInterval(rollingInterval);
+            showMessage('抽籤出錯，請重試！', '#ff0000');
+            isDrawing = false;
+            button.disabled = false;
+            return;
+          }
+        } while (drawnNumbers.includes(randomNum) || absentNumbers.includes(randomNum));
+        
+        numberDisplay.textContent = randomNum;
+        playRollingSound();
+        rollingCount++;
+        
+        if (rollingCount >= 20) {
+          clearInterval(rollingInterval);
+          
+          let finalNum;
+          let finalAttempts = 0;
+          do {
+            finalNum = Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
+            finalAttempts++;
+            if (finalAttempts > 1000) {
+              showMessage('抽籤出錯，請重試！', '#ff0000');
+              isDrawing = false;
+              button.disabled = false;
+              return;
+            }
+          } while (drawnNumbers.includes(finalNum) || absentNumbers.includes(finalNum));
+          
+          drawnNumbers.push(finalNum);
+          numberDisplay.textContent = finalNum;
+          numberDisplay.classList.remove('rolling');
+          numberDisplay.classList.add('winner');
+          subtitle.textContent = '準備抽籤';
+          
+          updateDrawnNumbersDisplay();
+          
+          playWinnerSound();
+          createConfetti();
+          createMultipleFireworks();
+          
+          isDrawing = false;
+          button.disabled = false;
+        }
+      }, 100);
+    }
+
+    document.getElementById('absentNumbers').addEventListener('input', function() {
+      if (this.value.trim()) {
+        this.classList.add('has-value');
+      } else {
+        this.classList.remove('has-value');
+      }
+    });
+
+    document.getElementById('drawButton').addEventListener('click', () => {
+      playClickSound();
+      drawNumber();
+    });
+    
+    document.getElementById('resetButton').addEventListener('click', () => {
+      playClickSound();
+      drawnNumbers = [];
+      const numberDisplay = document.getElementById('numberDisplay');
+      const subtitle = document.querySelector('.subtitle');
+      
+      numberDisplay.textContent = '?';
+      numberDisplay.classList.remove('winner');
+      numberDisplay.style.transform = 'scale(1)';
+      subtitle.textContent = '準備抽籤';
+      subtitle.classList.remove('congrats');
+      
+      updateDrawnNumbersDisplay();
+    });
+
+    async function onConfigChange(config) {
+      updateUI();
+    updateDrawnNumbersDisplay();
+    }
+
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig: defaultConfig,
+        onConfigChange: onConfigChange,
+        mapToCapabilities: (config) => ({
+          recolorables: [
+            {
+              get: () => config.background_color || defaultConfig.background_color,
+              set: (value) => {
+                config.background_color = value;
+                window.elementSdk.setConfig({ background_color: value });
+              }
+            },
+            {
+              get: () => config.surface_color || defaultConfig.surface_color,
+              set: (value) => {
+                config.surface_color = value;
+                window.elementSdk.setConfig({ surface_color: value });
+              }
+            },
+            {
+              get: () => config.text_color || defaultConfig.text_color,
+              set: (value) => {
+                config.text_color = value;
+                window.elementSdk.setConfig({ text_color: value });
+              }
+            },
+            {
+              get: () => config.primary_action_color || defaultConfig.primary_action_color,
+              set: (value) => {
+                config.primary_action_color = value;
+                window.elementSdk.setConfig({ primary_action_color: value });
+              }
+            },
+            {
+              get: () => config.secondary_action_color || defaultConfig.secondary_action_color,
+              set: (value) => {
+                config.secondary_action_color = value;
+                window.elementSdk.setConfig({ secondary_action_color: value });
+              }
+            }
+          ],
+          borderables: [],
+          fontEditable: {
+            get: () => config.font_family || defaultConfig.font_family,
+            set: (value) => {
+              config.font_family = value;
+              window.elementSdk.setConfig({ font_family: value });
+            }
+          },
+          fontSizeable: {
+            get: () => config.font_size || defaultConfig.font_size,
+            set: (value) => {
+              config.font_size = value;
+              window.elementSdk.setConfig({ font_size: value });
+            }
+          }
+        }),
+        mapToEditPanelValues: (config) => new Map([
+          ['main_title', config.main_title || defaultConfig.main_title],
+          ['button_text', config.button_text || defaultConfig.button_text]
+        ])
+      });
+    }
+
+    updateUI();
+    updateDrawnNumbersDisplay();
+    
+    // 初始化請假號碼樣式
+    const absentInput = document.getElementById('absentNumbers');
+    if (absentInput.value.trim()) {
+      absentInput.classList.add('has-value');
+    }
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a628bcdf561f218',t:'MTc2NDQyMzkzMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
